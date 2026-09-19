@@ -1,6 +1,7 @@
 name: Build and release
 
 on:
+  pull_request:
   workflow_dispatch:
     inputs:
       version:
@@ -42,6 +43,7 @@ jobs:
         with:
           components: rustfmt, clippy
           targets: ${{ runner.os == 'macOS' && 'x86_64-apple-darwin,aarch64-apple-darwin' || '' }}
+      - uses: Swatinem/rust-cache@v2
       - name: Linux dependencies
         if: runner.os == 'Linux'
         run: sudo apt-get update && sudo apt-get install -y libfontconfig1-dev libxkbcommon-dev libx11-dev libxkbcommon-x11-dev libgl1-mesa-dev
@@ -66,8 +68,12 @@ jobs:
       - name: Collect artifact
         shell: bash
         env:
-          VERSION: ${{ inputs.version }}
+          RELEASE_VERSION: ${{ inputs.version }}
         run: |
+          VERSION="$RELEASE_VERSION"
+          if [ -z "$VERSION" ]; then
+            VERSION="$(sed -n 's/^version = "\([^"]*\)"/\1/p' Cargo.toml | head -1)"
+          fi
           test "$VERSION" = "$(sed -n 's/^version = "\([^"]*\)"/\1/p' Cargo.toml | head -1)"
           grep -Fxq "## $VERSION" CHANGELOG.md
           mkdir release-assets
@@ -79,6 +85,7 @@ jobs:
           archive: false
 
   release:
+    if: github.event_name == 'workflow_dispatch'
     needs: test
     runs-on: ubuntu-22.04
     permissions:
