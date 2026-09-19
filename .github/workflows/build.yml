@@ -8,10 +8,6 @@ on:
         required: true
         default: '0.0.1'
         type: string
-      create_release:
-        description: Create a draft GitHub release
-        default: false
-        type: boolean
 
 concurrency:
   group: build-and-release
@@ -83,7 +79,6 @@ jobs:
           archive: false
 
   release:
-    if: inputs.create_release
     needs: test
     runs-on: ubuntu-22.04
     permissions:
@@ -98,4 +93,4 @@ jobs:
       - env:
           GH_TOKEN: ${{ github.token }}
           VERSION: ${{ inputs.version }}
-        run: gh release create "v$VERSION" release-assets/* --target "$GITHUB_SHA" --draft --title "Power Timer v$VERSION" --notes-file CHANGELOG.md
+        run: gh release create "v$VERSION" release-assets/* --target "$GITHUB_SHA" --title "Power Timer v$VERSION" --notes-file CHANGELOG.md

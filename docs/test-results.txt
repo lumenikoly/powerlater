@@ -17,7 +17,7 @@ Workflow checks:
 - YAML parsed; the only trigger is workflow_dispatch.
 - Three platform build configurations.
 - upload-artifact v7 with archive=false.
-- Optional draft release downloads with download-artifact v8.
+- Automatic release downloads with download-artifact v8.
 - Bash script syntax passed.
 
 macOS and remote GitHub Actions have not been executed locally.
