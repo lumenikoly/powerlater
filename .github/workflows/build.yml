@@ -38,6 +38,14 @@ jobs:
     runs-on: ${{ matrix.os }}
     timeout-minutes: 30
     steps:
+      - name: Verify release source
+        if: github.event_name == 'workflow_dispatch'
+        shell: bash
+        run: |
+          test "$GITHUB_REF" = "refs/heads/main" || {
+            echo "Releases must be run from main; selected ref: $GITHUB_REF" >&2
+            exit 1
+          }
       - uses: actions/checkout@v7
       - uses: dtolnay/rust-toolchain@stable
         with:
