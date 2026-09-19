@@ -1,0 +1,119 @@
+import { Button, LineEdit, VerticalBox, HorizontalBox } from "std-widgets.slint";
+
+export component TrayIcon inherits SystemTrayIcon {
+    icon: @image-url("../packaging/power-timer-256.png");
+    tooltip: "Power Timer";
+    in property <string> show-label: "Show Power Timer";
+    in property <string> exit-label: "Exit";
+    callback show-window();
+    callback exit-app();
+    clicked => { root.show-window(); }
+    Menu {
+        MenuItem { title: root.show-label; activated => { root.show-window(); } }
+        MenuItem { title: root.exit-label; activated => { root.exit-app(); } }
+    }
+}
+
+export component AppWindow inherits Window {
+    title: root.window-title;
+    preferred-width: 480px;
+    preferred-height: 610px;
+    min-width: 480px;
+    max-width: 480px;
+    min-height: 610px;
+    max-height: 610px;
+    background: #f4f6fa;
+
+    in property <string> window-title: "Power Timer";
+    in property <string> heading: "Power Timer";
+    in property <string> subtitle;
+    in-out property <string> hours: "0";
+    in-out property <string> minutes: "30";
+    in property <string> countdown: "00:30:00";
+    in property <string> status;
+    in property <string> detail;
+    in property <string> footer;
+    in property <string> main-label;
+    in property <string> language-label;
+    in property <string> sleep-label;
+    in property <string> shutdown-label;
+    in property <string> through-label;
+    in property <string> hours-label;
+    in property <string> minutes-label;
+    in property <[string]> preset-labels;
+    in property <bool> shutdown-selected: false;
+    in property <bool> controls-enabled: true;
+    in property <bool> main-enabled: true;
+
+    callback main-action();
+    callback language-action();
+    callback select-action(bool);
+    callback select-preset(int);
+    callback input-changed();
+    callback escape-action();
+
+    FocusScope {
+        key-pressed(event) => {
+            if (event.text == Key.Escape) { root.escape-action(); return accept; }
+            return reject;
+        }
+    }
+
+    VerticalBox {
+        padding: 24px;
+        spacing: 14px;
+
+        HorizontalBox {
+            alignment: space-between;
+            VerticalBox {
+                spacing: 2px;
+                Text { text: root.heading; font-size: 22px; font-weight: 700; color: #1e273b; }
+                Text { text: root.subtitle; font-size: 12px; color: #677286; }
+            }
+            Button { text: root.language-label; enabled: root.controls-enabled; clicked => { root.language-action(); } }
+        }
+
+        Rectangle {
+            background: white;
+            border-radius: 14px;
+            height: 386px;
+            VerticalBox {
+                padding: 20px;
+                spacing: 16px;
+                HorizontalBox {
+                    spacing: 8px;
+                    Button { text: root.sleep-label; enabled: root.controls-enabled; checked: !root.shutdown-selected; clicked => { root.select-action(false); } }
+                    Button { text: root.shutdown-label; enabled: root.controls-enabled; checked: root.shutdown-selected; clicked => { root.select-action(true); } }
+                }
+                Text { text: root.status; horizontal-alignment: center; color: #677286; font-size: 12px; }
+                Text { text: root.countdown; horizontal-alignment: center; color: #1e273b; font-size: 56px; }
+                Text { text: root.detail; horizontal-alignment: center; wrap: word-wrap; color: #677286; font-size: 12px; }
+                Rectangle { vertical-stretch: 1; }
+                HorizontalBox {
+                    spacing: 8px;
+                    Text { text: root.through-label; vertical-alignment: center; color: #677286; }
+                    LineEdit { text <=> root.hours; enabled: root.controls-enabled; edited => { root.input-changed(); } }
+                    Text { text: root.hours-label; vertical-alignment: center; color: #677286; }
+                    LineEdit { text <=> root.minutes; enabled: root.controls-enabled; edited => { root.input-changed(); } }
+                    Text { text: root.minutes-label; vertical-alignment: center; color: #677286; }
+                }
+                HorizontalBox {
+                    spacing: 8px;
+                    for label[i] in root.preset-labels : Button {
+                        text: label;
+                        enabled: root.controls-enabled;
+                        clicked => { root.select-preset(i); }
+                    }
+                }
+            }
+        }
+
+        Button {
+            text: root.main-label;
+            enabled: root.main-enabled;
+            height: 52px;
+            clicked => { root.main-action(); }
+        }
+        Text { text: root.footer; horizontal-alignment: center; wrap: word-wrap; color: #677286; font-size: 11px; }
+    }
+}

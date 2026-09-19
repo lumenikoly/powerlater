@@ -1,4 +1,5 @@
-# CMake build trees and generated files
+# Rust and legacy build trees
+/target/
 /build*/
 /out/
 /dist/

@@ -1,0 +1,34 @@
+[package]
+name = "power-timer"
+version = "0.0.1"
+edition = "2024"
+license = "MIT"
+description = "Schedule sleep or shutdown from a small desktop timer"
+build = "build.rs"
+
+[dependencies]
+chrono = { version = "0.4.42", default-features = false, features = ["clock"] }
+slint = { version = "1.18.0", default-features = false, features = ["std", "backend-winit", "renderer-femtovg", "system-tray", "compat-1-18"] }
+
+[build-dependencies]
+slint-build = { version = "1.18.0", default-features = false, features = ["compat-1-18"] }
+
+[target.'cfg(windows)'.build-dependencies]
+winresource = "0.1.23"
+
+[target.'cfg(windows)'.dependencies]
+windows = { version = "0.62.2", features = [
+  "Win32_Foundation",
+  "Win32_Security",
+  "Win32_System_Power",
+  "Win32_System_Shutdown",
+  "Win32_System_Threading",
+] }
+
+[target.'cfg(target_os = "linux")'.dependencies]
+libc = "0.2.176"
+
+[profile.release]
+lto = "thin"
+codegen-units = 1
+strip = true
