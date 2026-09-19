@@ -1,0 +1,12 @@
+[Desktop Entry]
+Type=Application
+Name=Power Timer
+Name[ru]=Таймер питания
+Comment=Schedule sleep or shutdown
+Comment[ru]=Сон или выключение по таймеру
+Exec=power-timer
+Icon=system-shutdown
+Terminal=false
+Categories=Utility;
+Keywords=shutdown;sleep;timer;
+StartupNotify=false

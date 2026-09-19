@@ -1,0 +1,24 @@
+Power Timer 0.0.1 — single-executable distribution checks, 2026-09-19
+
+Windows x64 / MSVC 19.51 / Release: 7/7 CTest suites passed.
+Linux x64 / Ubuntu 24.04 WSL / GCC 13.3 / Release: 8/8 CTest suites passed.
+Earlier Linux core check / Clang 18.1.3 / ASan + UBSan + -Werror: 3/3 passed.
+
+Windows and Linux checks:
+- Timer logic and both language catalogs.
+- Reject --smoke-test without --dry-run.
+- Reject invalid --lang values.
+- --license prints embedded MIT / third-party notices.
+- EN and RU GUI smoke tests with power APIs disabled.
+- Runtime installation contains exactly one executable.
+Linux additionally checks process execution with harmless fixtures.
+
+Workflow checks:
+- YAML parsed; the only trigger is workflow_dispatch.
+- Three platform build configurations.
+- upload-artifact v7 with archive=false.
+- Optional draft release downloads with download-artifact v8.
+- Bash script syntax passed.
+
+macOS and remote GitHub Actions have not been executed locally.
+No real sleep/shutdown operation was performed.

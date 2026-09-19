@@ -1,0 +1,38 @@
+# CMake build trees and generated files
+/build*/
+/out/
+/dist/
+CMakeUserPresets.json
+compile_commands.json
+
+# IDEs and editors
+/.vs/
+/.vscode/
+/.idea/
+*.sln
+*.vcxproj*
+*.user
+*.code-workspace
+
+# Compiler and analysis artifacts
+*.o
+*.obj
+*.a
+*.lib
+*.so
+*.dylib
+*.dll
+*.exe
+*.pdb
+*.profraw
+*.profdata
+*.gcda
+*.gcno
+.cache/
+
+# Operating-system and temporary files
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~

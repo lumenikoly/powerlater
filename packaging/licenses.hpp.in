@@ -1,0 +1,11 @@
+#pragma once
+
+namespace power_timer {
+inline constexpr char license_notices[] = R"PTLICENSE(
+@APPLICATION_LICENSE@
+
+@THIRD_PARTY_NOTICES@
+
+@FLTK_LICENSE@
+)PTLICENSE";
+} // namespace power_timer

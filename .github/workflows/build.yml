@@ -1,0 +1,162 @@
+name: Build and release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Version without the v prefix
+        required: true
+        default: '0.0.1'
+        type: string
+      create_release:
+        description: Create a draft GitHub release after successful checks
+        default: false
+        type: boolean
+
+concurrency:
+  group: build-and-release
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - name: Install lint tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang-format clang-tidy
+      - name: Check formatting
+        run: |
+          cmake -S . -B build-lint -DPOWER_TIMER_BUILD_APP=OFF -DPOWER_TIMER_BUILD_TESTS=OFF
+          cmake --build build-lint --target check-format
+      - name: Run clang-tidy
+        run: |
+          cmake -S . -B build-tidy -DPOWER_TIMER_BUILD_APP=OFF -DPOWER_TIMER_ENABLE_CLANG_TIDY=ON -DCMAKE_CXX_COMPILER=clang++
+          cmake --build build-tidy --parallel 3
+
+  prepare:
+    runs-on: ubuntu-22.04
+    outputs:
+      tag: ${{ steps.version.outputs.tag }}
+    steps:
+      - uses: actions/checkout@v7
+      - name: Validate version
+        id: version
+        env:
+          VERSION: ${{ inputs.version }}
+          CREATE_RELEASE: ${{ inputs.create_release }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]
+          source_version=$(sed -n 's/^project(PowerTimer VERSION \([^ ]*\) .*/\1/p' CMakeLists.txt)
+          test "$VERSION" = "$source_version"
+          grep -Fxq "## $VERSION" CHANGELOG.md
+          if [[ "$CREATE_RELEASE" == "true" ]] && git ls-remote --exit-code --tags origin "refs/tags/v$VERSION" >/dev/null 2>&1; then
+            echo "Tag v$VERSION already exists." >&2
+            exit 1
+          fi
+          echo "tag=v$VERSION" >> "$GITHUB_OUTPUT"
+
+  build:
+    needs: prepare
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-22.04
+            platform: linux-x64
+            binary: build/power-timer
+            extension: ''
+          - os: windows-latest
+            platform: windows-x64
+            binary: build/Release/PowerTimer.exe
+            extension: '.exe'
+          - os: macos-latest
+            platform: macos-universal
+            binary: build/PowerTimer
+            extension: ''
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v7
+      - name: Linux build dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake g++ make libx11-dev libxext-dev libxft-dev libxinerama-dev libxcursor-dev libxfixes-dev libxrender-dev libfontconfig1-dev xvfb
+      - name: Configure
+        shell: bash
+        run: |
+          args=(-S . -B build -DCMAKE_BUILD_TYPE=Release)
+          if [[ "$RUNNER_OS" == "Windows" ]]; then
+            args+=(-A x64)
+          elif [[ "$RUNNER_OS" == "macOS" ]]; then
+            args+=('-DCMAKE_OSX_ARCHITECTURES=arm64;x86_64' -DCMAKE_OSX_DEPLOYMENT_TARGET=11.0)
+          fi
+          cmake "${args[@]}"
+      - name: Build
+        run: cmake --build build --config Release --parallel 3
+      - name: Non-destructive unit and CLI tests
+        run: ctest --test-dir build -C Release -LE gui --output-on-failure
+      - name: GUI smoke tests (power actions disabled)
+        run: ctest --test-dir build -C Release -L gui --output-on-failure
+      - name: Verify macOS embedded metadata
+        if: runner.os == 'macOS'
+        run: |
+          lipo -verify_arch arm64 x86_64 build/PowerTimer
+          otool -l build/PowerTimer | grep -q __info_plist
+      - name: Collect single executable
+        env:
+          VERSION: ${{ inputs.version }}
+          PLATFORM: ${{ matrix.platform }}
+          BINARY: ${{ matrix.binary }}
+          EXTENSION: ${{ matrix.extension }}
+        shell: bash
+        run: |
+          mkdir -p release-assets
+          cp "$BINARY" "release-assets/PowerTimer-${VERSION}-${PLATFORM}${EXTENSION}"
+      - uses: actions/upload-artifact@v7
+        with:
+          path: release-assets/*
+          archive: false
+          if-no-files-found: error
+
+  sanitizers:
+    needs: prepare
+    runs-on: ubuntu-22.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+      - name: Build core with sanitizers (no GUI dependency)
+        run: |
+          cmake -S . -B build -DPOWER_TIMER_BUILD_APP=OFF -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_CXX_FLAGS="-fsanitize=address,undefined -fno-omit-frame-pointer -Werror"
+          cmake --build build --parallel 3
+      - name: Test without power actions
+        run: ctest --test-dir build --output-on-failure
+
+  release:
+    if: inputs.create_release
+    needs: [prepare, lint, build, sanitizers]
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: PowerTimer-*
+          path: release-assets
+          merge-multiple: true
+      - name: Create draft release with executables only
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ needs.prepare.outputs.tag }}
+        run: |
+          test "$(find release-assets -type f | wc -l)" -eq 3
+          gh release create "$TAG" release-assets/* --target "$GITHUB_SHA" --draft --title "Power Timer $TAG" --notes-file CHANGELOG.md
